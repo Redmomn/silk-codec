@@ -7,7 +7,7 @@ repository = "https://github.com/Redmomn/silk-codec"
 keywords = ["silk", "codec", "audio", "rust", "ffmpeg"]
 readme = "README.md"
 license = "MIT"
-exclude = ["silk/src/**/doc/", "silk/src/**/test/", "silk/src/**/test_vectors/"]
+exclude = ["silk/src/**/doc/", "silk/src/**/test/", "silk/src/**/test_vectors/", "test.wav"]
 
 [features]
 symphonia = ["dep:symphonia", "symphonia/all-formats", "symphonia/mpa", "symphonia/flac"]
