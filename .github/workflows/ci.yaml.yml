@@ -16,7 +16,7 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             gcc_package: gcc
           - target: i686-unknown-linux-gnu
-            gcc_package: gcc
+            gcc_package: gcc-i686-linux-gnu
           - target: aarch64-unknown-linux-gnu
             gcc_package: gcc-aarch64-linux-gnu
           - target: arm-unknown-linux-gnueabi
