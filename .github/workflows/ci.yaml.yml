@@ -19,9 +19,6 @@ jobs:
           - target: arm-unknown-linux-gnueabi
             gcc_package: gcc-arm-linux-gnueabi
             runs-on: ubuntu-latest
-          - target: mips-unknown-linux-gnu
-            gcc_package: gcc-mips-linux-gnu
-            runs-on: ubuntu-latest
 
     runs-on: ubuntu-latest
     steps:

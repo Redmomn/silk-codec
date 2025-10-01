@@ -5,7 +5,6 @@ use std::path::PathBuf;
     target_arch = "x86",
     target_arch = "x86_64",
     target_arch = "aarch64",
-    target_arch = "mips64",
     target_arch = "powerpc64"
 ))]
 static SILK_SDK_PATH: &str = "silk/src/SILK_SDK_SRC_FLP_v1.0.9";
@@ -13,7 +12,7 @@ static SILK_SDK_PATH: &str = "silk/src/SILK_SDK_SRC_FLP_v1.0.9";
 #[cfg(target_arch = "arm")]
 static SILK_SDK_PATH: &str = "silk/src/SILK_SDK_SRC_ARM_v1.0.9";
 
-#[cfg(any(target_arch = "mips", target_arch = "powerpc"))]
+#[cfg(target_arch = "powerpc")]
 static SILK_SDK_PATH: &str = "silk/src/SILK_SDK_SRC_FIX_v1.0.9";
 
 fn main() {
