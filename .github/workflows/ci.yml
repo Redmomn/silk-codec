@@ -26,6 +26,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           target: ${{ matrix.toolchain.target }}
+          components: clippy
       - name: lint
         run: cargo clippy --target ${{ matrix.toolchain.target }} --all-features -- -D warnings
       - name: build
@@ -52,6 +53,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           target: ${{ matrix.toolchain.target }}
+          components: clippy
       - name: Install cross-compilation toolchain
         run: |
           sudo add-apt-repository universe
@@ -79,6 +81,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           target: ${{ matrix.toolchain.target }}
+          components: clippy
       - name: lint
         run: cargo clippy --target ${{ matrix.toolchain.target }} --all-features -- -D warnings
       - name: build
