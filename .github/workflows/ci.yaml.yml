@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  check_linux:
+    strategy:
+      matrix:
+        toolchain:
+          - target: x86_64-unknown-linux-gnu
+            gcc_package: gcc
+            runs-on: ubuntu-latest
+          - target: arm-unknown-linux-gnueabi
+            gcc_package: gcc-arm-linux-gnueabi
+            runs-on: ubuntu-latest
+          - target: mips-unknown-linux-gnu
+            gcc_package: gcc-mips-linux-gnu
+            runs-on: ubuntu-latest
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: 'true'
+          fetch-depth: '1'
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          target: ${{ matrix.toolchain.target }}
+      - name: Install cross-compilation toolchain
+        run: |
+          sudo add-apt-repository universe
+          sudo apt update
+          sudo apt install -y ${{ matrix.toolchain.gcc_package }}
+      - name: build
+        run: cargo build --target ${{ matrix.toolchain.target }} --all-features --verbose
+
+
