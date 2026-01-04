@@ -155,25 +155,52 @@ impl AudioConverter {
         Ok(output)
     }
 
-    fn convert_buffer_to_f32(&self, decoded: &AudioBufferRef) -> Vec<f32> {
+    fn convert_buffer_to_f32(&self, decoded: &AudioBufferRef) -> (Vec<f32>, usize) {
         let spec = *decoded.spec();
-        let channels = spec.channels.count().max(1);
+        let channels = spec.channels.count();
+        let target_channels = self.target_channels.max(1) as usize;
 
-        let mut buffer = SampleBuffer::<f32>::new(decoded.frames() as u64, spec);
+        if channels == 0 {
+            return (Vec::new(), 0);
+        }
+
+        let frame_count = match u64::try_from(decoded.frames()) {
+            Ok(count) => count,
+            Err(_) => return (Vec::new(), 0),
+        };
+
+        let mut buffer = SampleBuffer::<f32>::new(frame_count, spec);
         buffer.copy_interleaved_ref(decoded);
 
         let samples = buffer.samples();
 
-        if self.target_channels == 1 && channels > 1 {
-            samples
-                .chunks(channels)
-                .map(|frame| frame.iter().copied().sum::<f32>() / channels as f32)
-                .collect()
+        if target_channels == 1 && channels > 1 {
+            let inv_channels = 1.0 / channels as f32;
+            (
+                samples
+                    .chunks(channels)
+                    .map(|frame| frame.iter().copied().sum::<f32>() * inv_channels)
+                    .collect(),
+                1,
+            )
+        } else if target_channels == channels {
+            (samples.to_vec(), channels)
+        } else if channels == 1 && target_channels > 1 {
+            (
+                samples
+                    .iter()
+                    .flat_map(|&sample| std::iter::repeat(sample).take(target_channels))
+                    .collect(),
+                target_channels,
+            )
         } else {
-            samples
-                .chunks(channels)
-                .map(|frame| frame.first().copied().unwrap_or(0.0))
-                .collect()
+            (
+                samples
+                    .chunks(channels)
+                    .map(|frame| frame.first().copied().unwrap_or(0.0))
+                    .collect(),
+                1,
+            )
         }
     }
 
@@ -183,10 +210,15 @@ impl AudioConverter {
         source_sample_rate: u32,
     ) -> Result<Vec<u8>, PcmError> {
         // 转换为f32样本
-        let samples = self.convert_buffer_to_f32(decoded);
+        let (samples, channels) = self.convert_buffer_to_f32(decoded);
 
         let final_samples = if source_sample_rate != self.target_sample_rate {
-            self.resample(&samples, source_sample_rate, self.target_sample_rate)
+            self.resample(
+                &samples,
+                channels,
+                source_sample_rate,
+                self.target_sample_rate,
+            )
         } else {
             samples
         };
@@ -213,27 +245,49 @@ impl AudioConverter {
     }
 
     /// resample
-    fn resample(&self, samples: &[f32], source_rate: u32, target_rate: u32) -> Vec<f32> {
-        if source_rate == target_rate {
+    fn resample(
+        &self,
+        samples: &[f32],
+        channels: usize,
+        source_rate: u32,
+        target_rate: u32,
+    ) -> Vec<f32> {
+        if channels == 0 {
+            return Vec::new();
+        }
+
+        if source_rate == target_rate || samples.is_empty() {
             return samples.to_vec();
+        }
+
+        let frames = samples.len() / channels;
+        if frames == 0 {
+            return Vec::new();
         }
 
         // 线性插值重采样
         let ratio = source_rate as f64 / target_rate as f64;
-        let target_len = (samples.len() as f64 / ratio) as usize;
-        let mut resampled = Vec::with_capacity(target_len);
+        let target_frames = (frames as f64 / ratio) as usize;
+        let mut resampled = Vec::with_capacity(target_frames * channels);
+        let last_frame = frames - 1;
 
-        for i in 0..target_len {
-            let source_pos = i as f64 * ratio;
+        for frame_idx in 0..target_frames {
+            let source_pos = frame_idx as f64 * ratio;
             let idx = source_pos as usize;
+            let current_frame_idx = idx.min(last_frame);
+            let next_idx = (current_frame_idx + 1).min(last_frame);
+            let frac = (source_pos - idx as f64).clamp(0.0, 1.0);
 
-            if idx + 1 < samples.len() {
-                let frac = source_pos - idx as f64;
+            for ch in 0..channels {
+                let base = current_frame_idx * channels + ch;
+                let next = next_idx * channels + ch;
+
+                let base_sample = samples.get(base).copied().unwrap_or(0.0);
+                let next_sample = samples.get(next).copied().unwrap_or(base_sample);
+
                 let interpolated =
-                    samples[idx] * (1.0 - frac as f32) + samples[idx + 1] * frac as f32;
+                    base_sample * (1.0 - frac as f32) + next_sample * frac as f32;
                 resampled.push(interpolated);
-            } else if idx < samples.len() {
-                resampled.push(samples[idx]);
             }
         }
 
