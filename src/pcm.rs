@@ -170,7 +170,7 @@ impl AudioConverter {
         };
 
         let mut buffer = SampleBuffer::<f32>::new(frame_count, spec);
-        buffer.copy_interleaved_ref(decoded);
+        buffer.copy_interleaved_ref(decoded.clone());
 
         let samples = buffer.samples();
 
