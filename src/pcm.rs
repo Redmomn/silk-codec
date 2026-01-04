@@ -1,7 +1,7 @@
 #![cfg(feature = "symphonia")]
 use std::io::{Read, Write};
 use std::path::Path;
-use symphonia::core::audio::{AudioBufferRef, Signal};
+use symphonia::core::audio::{AudioBufferRef, SampleBuffer};
 use symphonia::core::codecs::DecoderOptions;
 use symphonia::core::errors::Error as SymphoniaError;
 use symphonia::core::formats::FormatOptions;
@@ -101,7 +101,6 @@ impl AudioConverter {
 
         // 源音频参数
         let source_sample_rate = track.codec_params.sample_rate.unwrap_or(44100);
-        let source_channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(2) as u32;
 
         loop {
             let packet = match format.next_packet() {
@@ -125,8 +124,7 @@ impl AudioConverter {
 
             match decoder.decode(&packet) {
                 Ok(decoded) => {
-                    let pcm_data =
-                        self.process_audio_buffer(&decoded, source_sample_rate, source_channels)?;
+                    let pcm_data = self.process_audio_buffer(&decoded, source_sample_rate)?;
                     output.write_all(&pcm_data)?;
                 }
                 Err(SymphoniaError::IoError(err)) => {
@@ -157,192 +155,70 @@ impl AudioConverter {
         Ok(output)
     }
 
-    fn convert_buffer_to_f32(&self, decoded: &AudioBufferRef, source_channels: u32) -> Vec<f32> {
+    fn convert_buffer_to_f32(&self, decoded: &AudioBufferRef) -> (Vec<f32>, usize) {
         let spec = *decoded.spec();
-        let duration = decoded.frames();
-        let channels_count = spec.channels.count();
-        let need_mix_down = source_channels > 1 && self.target_channels == 1 && channels_count > 1;
+        let channels = spec.channels.count();
+        let target_channels = self.target_channels.max(1) as usize;
 
-        let mut samples = Vec::with_capacity(duration);
-
-        match decoded {
-            AudioBufferRef::S16(buf) => {
-                let left_chan = buf.chan(0);
-                let right_chan = if need_mix_down && channels_count > 1 {
-                    Some(buf.chan(1))
-                } else {
-                    None
-                };
-
-                for i in 0..duration.min(left_chan.len()) {
-                    let left = left_chan[i] as f32 / 32768.0;
-                    if let Some(right_data) = right_chan {
-                        if i < right_data.len() {
-                            let right = right_data[i] as f32 / 32768.0;
-                            samples.push(self.stereo_to_mono_mix(left, right));
-                        } else {
-                            samples.push(left);
-                        }
-                    } else {
-                        samples.push(left);
-                    }
-                }
-            }
-            AudioBufferRef::F32(buf) => {
-                let left_chan = buf.chan(0);
-                let right_chan = if need_mix_down && channels_count > 1 {
-                    Some(buf.chan(1))
-                } else {
-                    None
-                };
-
-                for i in 0..duration.min(left_chan.len()) {
-                    let left = left_chan[i];
-                    if let Some(right_data) = right_chan {
-                        if i < right_data.len() {
-                            let right = right_data[i];
-                            samples.push(self.stereo_to_mono_mix(left, right));
-                        } else {
-                            samples.push(left);
-                        }
-                    } else {
-                        samples.push(left);
-                    }
-                }
-            }
-            AudioBufferRef::U8(buf) => {
-                let left_chan = buf.chan(0);
-                let right_chan = if need_mix_down && channels_count > 1 {
-                    Some(buf.chan(1))
-                } else {
-                    None
-                };
-
-                for i in 0..duration.min(left_chan.len()) {
-                    let left = (left_chan[i] as f32 - 128.0) / 128.0;
-                    if let Some(right_data) = right_chan {
-                        if i < right_data.len() {
-                            let right = (right_data[i] as f32 - 128.0) / 128.0;
-                            samples.push(self.stereo_to_mono_mix(left, right));
-                        } else {
-                            samples.push(left);
-                        }
-                    } else {
-                        samples.push(left);
-                    }
-                }
-            }
-            AudioBufferRef::S32(buf) => {
-                let left_chan = buf.chan(0);
-                let right_chan = if need_mix_down && channels_count > 1 {
-                    Some(buf.chan(1))
-                } else {
-                    None
-                };
-
-                for i in 0..duration.min(left_chan.len()) {
-                    let left = left_chan[i] as f32 / 2147483648.0;
-                    if let Some(right_data) = right_chan {
-                        if i < right_data.len() {
-                            let right = right_data[i] as f32 / 2147483648.0;
-                            samples.push(self.stereo_to_mono_mix(left, right));
-                        } else {
-                            samples.push(left);
-                        }
-                    } else {
-                        samples.push(left);
-                    }
-                }
-            }
-            // 其他格式通用处理
-            _ => {
-                for i in 0..duration {
-                    let sample = match decoded {
-                        AudioBufferRef::U16(buf) => {
-                            if i < buf.chan(0).len() {
-                                (buf.chan(0)[i] as f32 - 32768.0) / 32768.0
-                            } else {
-                                0.0
-                            }
-                        }
-                        AudioBufferRef::U32(buf) => {
-                            if i < buf.chan(0).len() {
-                                (buf.chan(0)[i] as f32 - 2147483648.0) / 2147483648.0
-                            } else {
-                                0.0
-                            }
-                        }
-                        AudioBufferRef::S8(buf) => {
-                            if i < buf.chan(0).len() {
-                                buf.chan(0)[i] as f32 / 128.0
-                            } else {
-                                0.0
-                            }
-                        }
-                        AudioBufferRef::F64(buf) => {
-                            if i < buf.chan(0).len() {
-                                buf.chan(0)[i] as f32
-                            } else {
-                                0.0
-                            }
-                        }
-                        _ => 0.0,
-                    };
-
-                    if need_mix_down {
-                        let right_sample = match decoded {
-                            AudioBufferRef::U16(buf) => {
-                                if i < buf.chan(1).len() {
-                                    (buf.chan(1)[i] as f32 - 32768.0) / 32768.0
-                                } else {
-                                    0.0
-                                }
-                            }
-                            AudioBufferRef::U32(buf) => {
-                                if i < buf.chan(1).len() {
-                                    (buf.chan(1)[i] as f32 - 2147483648.0) / 2147483648.0
-                                } else {
-                                    0.0
-                                }
-                            }
-                            AudioBufferRef::S8(buf) => {
-                                if i < buf.chan(1).len() {
-                                    buf.chan(1)[i] as f32 / 128.0
-                                } else {
-                                    0.0
-                                }
-                            }
-                            AudioBufferRef::F64(buf) => {
-                                if i < buf.chan(1).len() {
-                                    buf.chan(1)[i] as f32
-                                } else {
-                                    0.0
-                                }
-                            }
-                            _ => 0.0,
-                        };
-                        samples.push(self.stereo_to_mono_mix(sample, right_sample));
-                    } else {
-                        samples.push(sample);
-                    }
-                }
-            }
+        if channels == 0 {
+            return (Vec::new(), 0);
         }
 
-        samples
+        let frame_count = match u64::try_from(decoded.frames()) {
+            Ok(count) => count,
+            Err(_) => return (Vec::new(), 0),
+        };
+
+        let mut buffer = SampleBuffer::<f32>::new(frame_count, spec);
+        buffer.copy_interleaved_ref(decoded.clone());
+
+        let samples = buffer.samples();
+
+        if target_channels == 1 && channels > 1 {
+            let inv_channels = 1.0 / channels as f32;
+            (
+                samples
+                    .chunks(channels)
+                    .map(|frame| frame.iter().copied().sum::<f32>() * inv_channels)
+                    .collect(),
+                1,
+            )
+        } else if target_channels == channels {
+            (samples.to_vec(), channels)
+        } else if channels == 1 && target_channels > 1 {
+            (
+                samples
+                    .iter()
+                    .flat_map(|&sample| std::iter::repeat_n(sample, target_channels))
+                    .collect(),
+                target_channels,
+            )
+        } else {
+            (
+                samples
+                    .chunks(channels)
+                    .map(|frame| frame.first().copied().unwrap_or(0.0))
+                    .collect(),
+                1,
+            )
+        }
     }
 
     fn process_audio_buffer(
         &self,
         decoded: &AudioBufferRef,
         source_sample_rate: u32,
-        source_channels: u32,
     ) -> Result<Vec<u8>, PcmError> {
         // 转换为f32样本
-        let samples = self.convert_buffer_to_f32(decoded, source_channels);
+        let (samples, channels) = self.convert_buffer_to_f32(decoded);
 
         let final_samples = if source_sample_rate != self.target_sample_rate {
-            self.resample(&samples, source_sample_rate, self.target_sample_rate)
+            self.resample(
+                &samples,
+                channels,
+                source_sample_rate,
+                self.target_sample_rate,
+            )
         } else {
             samples
         };
@@ -369,38 +245,55 @@ impl AudioConverter {
     }
 
     /// resample
-    fn resample(&self, samples: &[f32], source_rate: u32, target_rate: u32) -> Vec<f32> {
-        if source_rate == target_rate {
+    fn resample(
+        &self,
+        samples: &[f32],
+        channels: usize,
+        source_rate: u32,
+        target_rate: u32,
+    ) -> Vec<f32> {
+        if channels == 0 {
+            return Vec::new();
+        }
+
+        if source_rate == target_rate || samples.is_empty() {
             return samples.to_vec();
+        }
+
+        let frames = samples.len() / channels;
+        if frames == 0 {
+            return Vec::new();
         }
 
         // 线性插值重采样
         let ratio = source_rate as f64 / target_rate as f64;
-        let target_len = (samples.len() as f64 / ratio) as usize;
-        let mut resampled = Vec::with_capacity(target_len);
+        let target_frames = (frames as f64 / ratio) as usize;
+        let mut resampled = Vec::with_capacity(target_frames * channels);
+        let last_frame = frames - 1;
 
-        for i in 0..target_len {
-            let source_pos = i as f64 * ratio;
+        for frame_idx in 0..target_frames {
+            let source_pos = frame_idx as f64 * ratio;
             let idx = source_pos as usize;
+            let current_frame_idx = idx.min(last_frame);
+            let next_idx = (current_frame_idx + 1).min(last_frame);
+            let frac = (source_pos - idx as f64).clamp(0.0, 1.0);
 
-            if idx + 1 < samples.len() {
-                let frac = source_pos - idx as f64;
+            for ch in 0..channels {
+                let base = current_frame_idx * channels + ch;
+                let next = next_idx * channels + ch;
+
+                let base_sample = samples.get(base).copied().unwrap_or(0.0);
+                let next_sample = samples.get(next).copied().unwrap_or(base_sample);
+
                 let interpolated =
-                    samples[idx] * (1.0 - frac as f32) + samples[idx + 1] * frac as f32;
+                    base_sample * (1.0 - frac as f32) + next_sample * frac as f32;
                 resampled.push(interpolated);
-            } else if idx < samples.len() {
-                resampled.push(samples[idx]);
             }
         }
 
         resampled
     }
 
-    /// 混音
-    fn stereo_to_mono_mix(&self, left: f32, right: f32) -> f32 {
-        // 平均混音
-        (left + right) * 0.5
-    }
 }
 
 impl Default for AudioConverter {
