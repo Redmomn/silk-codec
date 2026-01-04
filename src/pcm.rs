@@ -1,7 +1,7 @@
 #![cfg(feature = "symphonia")]
 use std::io::{Read, Write};
 use std::path::Path;
-use symphonia::core::audio::{AudioBufferRef, SampleBuffer, Signal};
+use symphonia::core::audio::{AudioBufferRef, SampleBuffer};
 use symphonia::core::codecs::DecoderOptions;
 use symphonia::core::errors::Error as SymphoniaError;
 use symphonia::core::formats::FormatOptions;
@@ -189,7 +189,7 @@ impl AudioConverter {
             (
                 samples
                     .iter()
-                    .flat_map(|&sample| std::iter::repeat(sample).take(target_channels))
+                    .flat_map(|&sample| std::iter::repeat_n(sample, target_channels))
                     .collect(),
                 target_channels,
             )
