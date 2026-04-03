@@ -1,9 +1,11 @@
 use ffmpeg_next as ffmpeg;
+#[cfg(feature = "ffmpeg-tracing")]
 use std::cell::Cell;
-use std::convert::TryFrom;
+#[cfg(feature = "ffmpeg-tracing")]
 use std::ffi::CStr;
-use std::os::raw::{c_char, c_int, c_void};
 use std::sync::OnceLock;
+#[cfg(feature = "ffmpeg-tracing")]
+use std::{os::raw::{c_char, c_int, c_void}};
 
 pub(crate) fn ensure_ffmpeg_initialized() -> Result<(), ffmpeg::Error> {
     static FFMPEG_INIT: OnceLock<Result<(), ffmpeg::Error>> = OnceLock::new();
@@ -18,6 +20,7 @@ pub(crate) fn ensure_ffmpeg_initialized() -> Result<(), ffmpeg::Error> {
     }
 }
 
+#[cfg(feature = "ffmpeg-tracing")]
 pub fn install_ffmpeg_tracing(level: ffmpeg::log::Level) -> Result<(), ffmpeg::Error> {
     static FFMPEG_TRACING_INIT: OnceLock<()> = OnceLock::new();
 
@@ -29,10 +32,12 @@ pub fn install_ffmpeg_tracing(level: ffmpeg::log::Level) -> Result<(), ffmpeg::E
     Ok(())
 }
 
+#[cfg(feature = "ffmpeg-tracing")]
 thread_local! {
     static FFMPEG_LOG_PREFIX_STATE: Cell<c_int> = const { Cell::new(1) };
 }
 
+#[cfg(feature = "ffmpeg-tracing")]
 unsafe extern "C" fn ffmpeg_tracing_callback(
     avcl: *mut c_void,
     level: c_int,

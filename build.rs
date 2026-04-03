@@ -1,23 +1,28 @@
 use std::env;
 use std::path::PathBuf;
 
-#[cfg(any(
-    target_arch = "x86",
-    target_arch = "x86_64",
-    target_arch = "aarch64",
-    target_arch = "powerpc64"
-))]
-static SILK_SDK_PATH: &str = "silk/src/SILK_SDK_SRC_FLP_v1.0.9";
+fn get_silk_sdk_path() -> &'static str {
+    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
 
-#[cfg(target_arch = "arm")]
-static SILK_SDK_PATH: &str = "silk/src/SILK_SDK_SRC_ARM_v1.0.9";
+    match target_arch.as_str() {
+        "x86" | "x86_64" | "aarch64" | "powerpc64" => "silk/src/SILK_SDK_SRC_FLP_v1.0.9",
+        "arm" => "silk/src/SILK_SDK_SRC_ARM_v1.0.9",
+        "powerpc" | _ => "silk/src/SILK_SDK_SRC_FIX_v1.0.9",
+    }
+}
 
-#[cfg(target_arch = "powerpc")]
-static SILK_SDK_PATH: &str = "silk/src/SILK_SDK_SRC_FIX_v1.0.9";
+fn configure_ffmpeg_static_linking() {
+    println!("cargo:rustc-link-lib=c++");
+}
 
 fn main() {
-    let interface_path = format!("{SILK_SDK_PATH}/interface");
-    let src_path = format!("{SILK_SDK_PATH}/src");
+    if env::var_os("CARGO_FEATURE_FFMPEG_STATIC").is_some() {
+        configure_ffmpeg_static_linking();
+    }
+
+    let silk_sdk_path = get_silk_sdk_path();
+    let interface_path = format!("{silk_sdk_path}/interface");
+    let src_path = format!("{silk_sdk_path}/src");
     let mut files = Vec::new();
     files.extend(
         glob::glob(&format!("{src_path}/*.c"))

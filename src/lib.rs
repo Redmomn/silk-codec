@@ -8,7 +8,7 @@ mod pcm;
 #[cfg(feature = "ffmpeg")]
 mod video;
 
-#[cfg(feature = "ffmpeg")]
+#[cfg(feature = "ffmpeg-tracing")]
 pub use ffmpeg_utils::install_ffmpeg_tracing;
 #[cfg(feature = "ffmpeg")]
 pub use pcm::{AudioConverter, PcmError, convert_audio_to_pcm};
