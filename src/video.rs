@@ -158,15 +158,11 @@ fn receive_first_decoded_frame(
 ) -> Result<Option<ffmpeg::util::frame::Video>, VideoError> {
     let mut decoded = ffmpeg::util::frame::Video::empty();
 
-    loop {
-        match decoder.receive_frame(&mut decoded) {
-            Ok(()) => return Ok(Some(decoded)),
-            Err(ffmpeg::Error::Other { errno }) if errno == ffmpeg::util::error::EAGAIN => {
-                return Ok(None);
-            }
-            Err(ffmpeg::Error::Eof) => return Ok(None),
-            Err(err) => return Err(err.into()),
-        }
+    match decoder.receive_frame(&mut decoded) {
+        Ok(()) => Ok(Some(decoded)),
+        Err(ffmpeg::Error::Other { errno }) if errno == ffmpeg::util::error::EAGAIN => Ok(None),
+        Err(ffmpeg::Error::Eof) => Ok(None),
+        Err(err) => Err(err.into()),
     }
 }
 

@@ -7,7 +7,8 @@ fn get_silk_sdk_path() -> &'static str {
     match target_arch.as_str() {
         "x86" | "x86_64" | "aarch64" | "powerpc64" => "silk/src/SILK_SDK_SRC_FLP_v1.0.9",
         "arm" => "silk/src/SILK_SDK_SRC_ARM_v1.0.9",
-        "powerpc" | _ => "silk/src/SILK_SDK_SRC_FIX_v1.0.9",
+        "powerpc" => "silk/src/SILK_SDK_SRC_FIX_v1.0.9",
+        _ => "silk/src/SILK_SDK_SRC_FIX_v1.0.9",
     }
 }
 
