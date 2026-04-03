@@ -3,10 +3,7 @@ use std::path::Path;
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let converter = AudioConverter::new()
-        .with_sample_rate(24000)
-        .with_channels(1);
-
+    let converter = AudioConverter::new()?;
     let input_file = "test.wav";
     if Path::new(input_file).exists() {
         let output_file = "output_test.pcm";
