@@ -1,0 +1,26 @@
+language = "C"
+include_guard = "SILK_CODEC_H"
+pragma_once = true
+usize_is_size_t = true
+documentation = true
+cpp_compat = true
+sys_includes = ["stdbool.h", "stddef.h", "stdint.h"]
+
+[parse]
+parse_deps = false
+
+[export]
+include = [
+  "SilkCodecBuffer",
+  "SilkCodecStatus",
+  "SilkCodecVideoMetadata",
+  "silk_codec_encode",
+  "silk_codec_decode",
+  "silk_codec_free_buffer",
+  "silk_codec_convert_audio_to_pcm_file",
+  "silk_codec_get_video_metadata",
+  "silk_codec_save_video_first_frame_png",
+]
+
+[defines]
+"feature = ffmpeg" = "SILK_CODEC_FEATURE_FFMPEG"

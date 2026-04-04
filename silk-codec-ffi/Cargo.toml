@@ -1,0 +1,22 @@
+[package]
+name = "silk-codec-ffi"
+version = "0.1.0"
+edition = "2024"
+description = "C FFI static library for silk-codec"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["lib", "staticlib"]
+
+[features]
+default = []
+ffmpeg = ["silk-codec/ffmpeg"]
+ffmpeg-tracing = ["ffmpeg", "silk-codec/ffmpeg-tracing"]
+ffmpeg-static = ["ffmpeg", "silk-codec/ffmpeg-static"]
+
+[dependencies]
+silk-codec = { path = ".." }
+
+[build-dependencies]
+cbindgen = "0.29.0"

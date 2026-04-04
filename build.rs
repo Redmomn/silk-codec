@@ -17,6 +17,9 @@ fn configure_ffmpeg_static_linking() {
 }
 
 fn main() {
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=src/lib.rs");
+
     if env::var_os("CARGO_FEATURE_FFMPEG_STATIC").is_some() {
         configure_ffmpeg_static_linking();
     }

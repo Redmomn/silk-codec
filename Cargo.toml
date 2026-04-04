@@ -9,6 +9,10 @@ readme = "README.md"
 license = "MIT"
 exclude = ["silk/src/**/doc/", "silk/src/**/test/", "silk/src/**/test_vectors/", "test.wav"]
 
+[workspace]
+members = ["silk-codec-ffi"]
+default-members = ["."]
+
 [features]
 default = []
 ffmpeg = ["dep:ffmpeg-next"]
