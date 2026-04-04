@@ -48,7 +48,7 @@ jobs:
         ffmpeg_version: [ "6.1", "7.0", "7.1", "8.0", "8.1" ]
     runs-on: ubuntu-latest
     env:
-      FFMPEG_DIR: /home/runner/work/rust-ffmpeg/rust-ffmpeg/ffmpeg-${{ matrix.ffmpeg_version }}-linux-clang-default
+      FFMPEG_DIR: ${{ github.workspace }}/ffmpeg-${{ matrix.ffmpeg_version }}-linux-clang-default
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -59,7 +59,6 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y --no-install-recommends clang curl pkg-config xz-utils libxv-dev libc++-dev
-          sudo apt install -y --no-install-recommends libavcodec-dev libavformat-dev libavutil-dev libswresample-dev libswscale-dev libavfilter-dev libavdevice-dev
           curl -L https://sourceforge.net/projects/avbuild/files/linux/ffmpeg-${{ matrix.ffmpeg_version }}-linux-clang-default.tar.xz/download -o ffmpeg.tar.xz
           tar -xf ffmpeg.tar.xz
       - name: Setup Rust
