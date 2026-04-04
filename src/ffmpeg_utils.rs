@@ -5,7 +5,14 @@ use std::cell::Cell;
 use std::ffi::CStr;
 use std::sync::OnceLock;
 #[cfg(feature = "ffmpeg-tracing")]
-use std::{os::raw::{c_char, c_int, c_void}};
+use std::{
+    os::raw::{c_char, c_int, c_void},
+};
+
+#[cfg(all(feature = "ffmpeg-tracing", target_os = "linux"))]
+type FfmpegVaList = *mut ffmpeg::ffi::__va_list_tag;
+#[cfg(all(feature = "ffmpeg-tracing", not(target_os = "linux")))]
+type FfmpegVaList = ffmpeg::ffi::va_list;
 
 pub(crate) fn ensure_ffmpeg_initialized() -> Result<(), ffmpeg::Error> {
     static FFMPEG_INIT: OnceLock<Result<(), ffmpeg::Error>> = OnceLock::new();
@@ -42,7 +49,7 @@ unsafe extern "C" fn ffmpeg_tracing_callback(
     avcl: *mut c_void,
     level: c_int,
     fmt: *const c_char,
-    vl: ffmpeg::ffi::va_list,
+    vl: FfmpegVaList,
 ) {
     if fmt.is_null() {
         return;

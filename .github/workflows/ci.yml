@@ -7,68 +7,74 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
-
+# ref https://github.com/zmwangx/rust-ffmpeg/blob/master/.github/workflows/build.yml
 jobs:
   check_windows:
-    strategy:
-      matrix:
-        toolchain:
-          - target: x86_64-pc-windows-msvc
-          - target: x86_64-pc-windows-gnu
     runs-on: windows-latest
+    env:
+      FFMPEG_DOWNLOAD_URL: https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full-shared.7z
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
           submodules: 'true'
           fetch-depth: '1'
+      - name: Install dependencies
+        run: |
+          $VCINSTALLDIR = $(& "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath)
+          Add-Content $env:GITHUB_ENV "LIBCLANG_PATH=${VCINSTALLDIR}\VC\Tools\LLVM\x64\bin`n"
+          Invoke-WebRequest "${env:FFMPEG_DOWNLOAD_URL}" -OutFile ffmpeg-release-full-shared.7z
+          7z x ffmpeg-release-full-shared.7z
+          mkdir ffmpeg
+          mv ffmpeg-*/* ffmpeg/
+          Add-Content $env:GITHUB_ENV "FFMPEG_DIR=${pwd}\ffmpeg`n"
+          Add-Content $env:GITHUB_PATH "${pwd}\ffmpeg\bin`n"
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          target: ${{ matrix.toolchain.target }}
           components: clippy
       - name: lint
-        run: cargo clippy --target ${{ matrix.toolchain.target }} --all-features -- -D warnings
+        run: cargo clippy --all-features -- -D warnings
       - name: build
-        run: cargo build --target ${{ matrix.toolchain.target }} --all-features --verbose
+        run: cargo build
+      - name: build ffmpeg
+        run: cargo build --features ffmpeg
+      - name: build ffmpeg static
+        run: cargo build --features ffmpeg-static
 
   check_linux:
     strategy:
       matrix:
-        ffmpeg_version: [ "3.4", "4.0", "4.1", "4.2", "4.3", "4.4", "5.0", "5.1", "6.0" ]
-        toolchain:
-          - target: x86_64-unknown-linux-gnu
-            gcc_package: gcc
-          - target: aarch64-unknown-linux-gnu
-            gcc_package: gcc-aarch64-linux-gnu
+        ffmpeg_version: [ "6.1", "7.0", "7.1", "8.0", "8.1" ]
     runs-on: ubuntu-latest
-    container: jrottenberg/ffmpeg:${{ matrix.ffmpeg_version }}-ubuntu
+    env:
+      FFMPEG_DIR: ${{ github.workspace }}/ffmpeg-${{ matrix.ffmpeg_version }}-linux-clang-default
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
           submodules: 'true'
           fetch-depth: '1'
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y --no-install-recommends clang curl pkg-config xz-utils libxv-dev libc++-dev
+          curl -L https://sourceforge.net/projects/avbuild/files/linux/ffmpeg-${{ matrix.ffmpeg_version }}-linux-clang-default.tar.xz/download -o ffmpeg.tar.xz
+          tar -xf ffmpeg.tar.xz
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          target: ${{ matrix.toolchain.target }}
           components: clippy
-      - name: Install cross-compilation toolchain
-        run: |
-          sudo apt update
-          sudo apt install -y ${{ matrix.toolchain.gcc_package }}
       - name: lint
-        run: cargo clippy --target ${{ matrix.toolchain.target }} --all-features -- -D warnings
+        run: cargo clippy --all-features -- -D warnings
       - name: build
-        run: cargo build --target ${{ matrix.toolchain.target }} --all-features --verbose
+        run: cargo build
+      - name: build ffmpeg
+        run: cargo build --features ffmpeg
+      - name: build ffmpeg static
+        run: cargo build --features ffmpeg-static
 
   check_macos:
-    strategy:
-      matrix:
-        toolchain:
-          - target: x86_64-apple-darwin
-          - target: aarch64-apple-darwin
     env:
       LIBRARY_PATH: $(brew --prefix)/lib
     runs-on: macos-latest
@@ -84,9 +90,12 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          target: ${{ matrix.toolchain.target }}
           components: clippy
       - name: lint
-        run: cargo clippy --target ${{ matrix.toolchain.target }} --all-features -- -D warnings
+        run: cargo clippy --all-features -- -D warnings
       - name: build
-        run: cargo build --target ${{ matrix.toolchain.target }} --all-features --verbose
+        run: cargo build
+      - name: build ffmpeg
+        run: cargo build --features ffmpeg
+      - name: build ffmpeg static
+        run: cargo build --features ffmpeg-static
