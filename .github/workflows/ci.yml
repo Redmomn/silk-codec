@@ -7,7 +7,7 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
-
+# ref https://github.com/zmwangx/rust-ffmpeg/blob/master/.github/workflows/build.yml
 jobs:
   check_windows:
     runs-on: windows-latest
@@ -45,7 +45,7 @@ jobs:
   check_linux:
     strategy:
       matrix:
-        ffmpeg_version: [ "3.4", "4.0", "4.1", "4.2", "4.3", "4.4", "5.0", "5.1", "6.0" ,"6.1", "7.0", "7.1", "8.0", "8.1" ]
+        ffmpeg_version: [ "6.1", "7.0", "7.1", "8.0", "8.1" ]
     runs-on: ubuntu-latest
     env:
       FFMPEG_DIR: /home/runner/work/rust-ffmpeg/rust-ffmpeg/ffmpeg-${{ matrix.ffmpeg_version }}-linux-clang-default
