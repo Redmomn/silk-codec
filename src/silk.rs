@@ -142,7 +142,7 @@ unsafe fn _encode_silk(
 
     let mut result = vec![];
     if tencent {
-        result.put_u8(b'\x02');
+        result.put_u8(0x02);
     }
     result.extend_from_slice(b"#!SILK_V3");
 
@@ -165,7 +165,9 @@ unsafe fn _encode_silk(
         result.put_i16_le(output_size);
         result.extend_from_slice(&buf[0..output_size as usize]);
     }
-
+    if !tencent {
+        result.put_i16_le(-1);
+    }
     Ok(result)
 }
 

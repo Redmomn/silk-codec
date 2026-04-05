@@ -2,14 +2,16 @@ use std::env;
 use std::path::PathBuf;
 
 fn get_silk_sdk_path() -> &'static str {
-    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
+    // let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
 
-    match target_arch.as_str() {
-        "x86" | "x86_64" | "aarch64" | "powerpc64" => "silk/src/SILK_SDK_SRC_FLP_v1.0.9",
-        "arm" => "silk/src/SILK_SDK_SRC_ARM_v1.0.9",
-        "powerpc" => "silk/src/SILK_SDK_SRC_FIX_v1.0.9",
-        _ => "silk/src/SILK_SDK_SRC_FIX_v1.0.9",
-    }
+    // match target_arch.as_str() {
+    //     "x86" | "x86_64" | "aarch64" | "powerpc64" => "silk/src/SILK_SDK_SRC_FLP_v1.0.9",
+    //     "arm" => "silk/src/SILK_SDK_SRC_ARM_v1.0.9",
+    //     "powerpc" => "silk/src/SILK_SDK_SRC_FIX_v1.0.9",
+    //     _ => "silk/src/SILK_SDK_SRC_FIX_v1.0.9",
+    // };
+    // QQ用的定点数编码
+    "silk/src/SILK_SDK_SRC_FIX_v1.0.9"
 }
 
 fn configure_ffmpeg_static_linking() {

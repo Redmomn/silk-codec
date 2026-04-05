@@ -7,7 +7,10 @@ use thiserror::Error;
 
 const FILTER_INPUT_NAME: &str = "in";
 const FILTER_OUTPUT_NAME: &str = "out";
+const TARGET_SAMPLE_RATE: u32 = 24000;
 const TARGET_CHANNEL_LAYOUT: ffmpeg::ChannelLayout = ffmpeg::ChannelLayout::MONO;
+const TARGET_SAMPLE_FORMAT: ffmpeg::format::Sample =
+    ffmpeg::format::Sample::I16(ffmpeg::format::sample::Type::Packed);
 const PCM_BYTES_PER_SAMPLE: usize = 2;
 const FILTER_SPEC: &str = "aformat=sample_fmts=s16:sample_rates=24000:channel_layouts=mono";
 
@@ -23,6 +26,14 @@ pub enum PcmError {
     MissingFilter(&'static str),
     #[error("filter context `{0}` not found")]
     MissingFilterContext(&'static str),
+    #[error(
+        "unexpected filtered pcm frame: format={format}, sample_rate={sample_rate}, channels={channels}; expected format=s16, sample_rate=24000, channels=1"
+    )]
+    UnexpectedFilteredFrame {
+        format: &'static str,
+        sample_rate: u32,
+        channels: u16,
+    },
     #[error("invalid filtered pcm frame: expected at least {expected} bytes, got {actual} bytes")]
     InvalidFilteredFrame { expected: usize, actual: usize },
 }
@@ -222,6 +233,17 @@ fn write_pcm_frame<W: Write>(
     frame: &ffmpeg::util::frame::Audio,
     target_channel_layout: ffmpeg::ChannelLayout,
 ) -> Result<(), PcmError> {
+    if frame.format() != TARGET_SAMPLE_FORMAT
+        || frame.rate() != TARGET_SAMPLE_RATE
+        || frame.channels() != target_channel_layout.channels() as u16
+    {
+        return Err(PcmError::UnexpectedFilteredFrame {
+            format: frame.format().name(),
+            sample_rate: frame.rate(),
+            channels: frame.channels(),
+        });
+    }
+
     let expected_bytes =
         frame.samples() * target_channel_layout.channels() as usize * PCM_BYTES_PER_SAMPLE;
     let pcm_bytes = frame.data(0);
@@ -233,6 +255,24 @@ fn write_pcm_frame<W: Write>(
         });
     }
 
-    output.write_all(&pcm_bytes[..expected_bytes])?;
+    write_s16le_pcm_bytes(output, &pcm_bytes[..expected_bytes])?;
+    Ok(())
+}
+
+fn write_s16le_pcm_bytes<W: Write>(output: &mut W, pcm_bytes: &[u8]) -> Result<(), PcmError> {
+    #[cfg(target_endian = "little")]
+    {
+        output.write_all(pcm_bytes)?;
+    }
+
+    #[cfg(target_endian = "big")]
+    {
+        let mut le_bytes = Vec::with_capacity(pcm_bytes.len());
+        for sample in pcm_bytes.chunks_exact(PCM_BYTES_PER_SAMPLE) {
+            le_bytes.extend_from_slice(&[sample[1], sample[0]]);
+        }
+        output.write_all(&le_bytes)?;
+    }
+
     Ok(())
 }

@@ -3,11 +3,9 @@ use ffmpeg_next as ffmpeg;
 use std::cell::Cell;
 #[cfg(feature = "ffmpeg-tracing")]
 use std::ffi::CStr;
-use std::sync::OnceLock;
 #[cfg(feature = "ffmpeg-tracing")]
-use std::{
-    os::raw::{c_char, c_int, c_void},
-};
+use std::os::raw::{c_char, c_int, c_void};
+use std::sync::OnceLock;
 
 #[cfg(all(feature = "ffmpeg-tracing", target_os = "linux"))]
 type FfmpegVaList = *mut ffmpeg::ffi::__va_list_tag;
