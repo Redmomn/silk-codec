@@ -1,8 +1,8 @@
 [package]
 name = "silk-codec"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
-description = "Multi-architecture silk-codec bindings for Rust"
+description = "silk codec bindings for Rust"
 repository = "https://github.com/Redmomn/silk-codec"
 keywords = ["silk", "codec", "audio", "rust", "ffmpeg"]
 readme = "README.md"
