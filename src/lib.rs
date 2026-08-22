@@ -1,5 +1,10 @@
 mod silk;
-pub use silk::{SilkError, decode_silk, encode_silk};
+pub use silk::{
+    DecoderBuilder, EncoderBuilder, SilkBuilder, SilkCoder, SilkDecoder, SilkEncoder, SilkError,
+    TailPolicy, decode_silk, encode_silk,
+};
+
+pub use silk::{DecoderBuilder as SilkDecoderBuilder, EncoderBuilder as SilkEncoderBuilder};
 
 #[cfg(feature = "ffmpeg")]
 mod ffmpeg_utils;

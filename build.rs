@@ -2,25 +2,12 @@ use std::env;
 use std::path::PathBuf;
 
 fn get_silk_sdk_path() -> &'static str {
-    // let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
-
-    // match target_arch.as_str() {
-    //     "x86" | "x86_64" | "aarch64" | "powerpc64" => "silk/src/SILK_SDK_SRC_FLP_v1.0.9",
-    //     "arm" => "silk/src/SILK_SDK_SRC_ARM_v1.0.9",
-    //     "powerpc" => "silk/src/SILK_SDK_SRC_FIX_v1.0.9",
-    //     _ => "silk/src/SILK_SDK_SRC_FIX_v1.0.9",
-    // };
-    // QQ用的定点数编码
     "silk/src/SILK_SDK_SRC_FIX_v1.0.9"
-}
-
-fn configure_ffmpeg_static_linking() {
-    println!("cargo:rustc-link-lib=c++");
 }
 
 fn main() {
     if env::var_os("CARGO_FEATURE_FFMPEG_STATIC").is_some() {
-        configure_ffmpeg_static_linking();
+        println!("cargo:rustc-link-lib=c++");
     }
 
     let silk_sdk_path = get_silk_sdk_path();
@@ -42,13 +29,8 @@ fn main() {
         .files(files)
         .compile("silk");
 
-    println!("cargo:rustc-link-lib=static=silk");
-
     let bindings = bindgen::Builder::default()
-        .header(format!("{interface_path}/SKP_Silk_control.h"))
-        .header(format!("{interface_path}/SKP_Silk_errors.h"))
         .header(format!("{interface_path}/SKP_Silk_SDK_API.h"))
-        .header(format!("{interface_path}/SKP_Silk_typedef.h"))
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()
         .expect("Unable to generate bindings");
