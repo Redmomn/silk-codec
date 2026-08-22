@@ -104,8 +104,9 @@ impl SilkEncoder {
             return Err(SilkError::InvalidPcmLength);
         }
         let mut samples = Vec::with_capacity(pcm_s16le.len() / 2);
-        for b in pcm_s16le.chunks_exact(2) {
-            samples.push(i16::from_le_bytes([b[0], b[1]]));
+        let (chunks, _) = pcm_s16le.as_chunks::<2>();
+        for &[low, high] in chunks {
+            samples.push(i16::from_le_bytes([low, high]));
         }
         self.encode(&samples, tencent)
     }
